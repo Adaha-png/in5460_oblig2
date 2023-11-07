@@ -1,34 +1,46 @@
-import tensorflow as tf
+import torch
+from torch import nn
 
-class LSTM(tf.keras.Sequential):
-    def __init__(self):
-        super (LSTM, self).__init__()
+class LSTMClassifier(nn.Module):
+    
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        
+        super(LSTMClassifier, self).__init__()
+        
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
 
-    def build_default(self, input_shape, n_classes, use_batch_shape = False, activation = 'softmax', verbose = 0):
-        model = tf.keras.models.Sequential()
-        if use_batch_shape:
-            model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences = True), batch_input_shape = input_shape))
-        else:
-            model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences = True), input_shape = input_shape))
-            model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512)))
-            model.add(tf.keras.layers.Dense(n_classes,activation=activation))
-        if verbose:
-            model.summary()
-        return model
+    def forward(self, x):
+        # Set initial hidden and cell states 
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))
 
-class SimpleRNN(tf.keras.Sequential):
-    def __init__(self):
-        super (SimpleRNN, self).__init__()
+        # Decode the hidden state of the last time step
+        out = self.fc(out[:, -1, :])
+        return out
 
-    def build_default(self, input_shape, n_classes, use_batch_shape = False, activation = 'softmax', verbose = 0):
-        model = tf.keras.models.Sequential()
-        if use_batch_shape:
-            model.add(tf.keras.layers.Bidirectional(tf.keras.layers.SimpleRNN(512, return_sequences = True), batch_input_shape = input_shape))
-        else:
-            model.add(tf.keras.layers.Bidirectional(tf.keras.layers.SimpleRNN(512, return_sequences = True), input_shape = input_shape))
-            model.add(tf.keras.layers.Bidirectional(tf.keras.layers.SimpleRNN(512)))
-            model.add(tf.keras.layers.Dense(n_classes,activation=activation))
-        if verbose:
-            model.summary()
-        return model
+class RNNClassifier(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super(RNNClassifier, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x):
+        # Set initial hidden states
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device) 
+
+        # Forward propagate the RNN
+        out, _ = self.rnn(x, h0)
+
+        # Decode the hidden state of the last time step
+        out = self.fc(out[:, -1, :])
+        return out
 

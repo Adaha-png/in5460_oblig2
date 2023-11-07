@@ -1,41 +1,83 @@
-from model import SimpleRNN, LSTM
-import tensorflow as tf
-#   import tensorflow_federated as tff
+from model import RNNClassifier, LSTMClassifier
 import argparse
 import pandas as pd
 import numpy as np
-
-
-col = ["AC", "Dish washer", "Washing Machine", "Dryer", "Water heater", "TV", "Microwave", "Kettle", "Lighting", "Refrigerator"]
-prediction = []
-classification = []
-for i in range(50):
-    df = pd.read_excel("dataset.xlsx",sheet_name=i)
-    prediction.append(df[col].sum(axis='columns').to_numpy())
-    classification.append(df[col].to_numpy())
-
-prediction = np.array(prediction)
-classification = np.array(classification)
+# we naturally first need to import torch and torchvision
+import torch
+from torch.utils.data import DataLoader
+import random
+from dataset import CustomDataset
 
 def main():
+# Let's define some hyperparameters
+    input_size = 96 # Input size should be based on your data
+    hidden_size = 128 # hidden size
+    num_layers = 2 # number of LSTM layers
+    num_classes = 10 # number of outputs
 
-    rnn_model = SimpleRNN()
-    rnn_model.build_default((7*96,1), 96, activation = None)
+    lstm_model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
+    rnn_model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
+    
+    run_centralised(epochs = 5, lr = 0.001, model = lstm_model)
 
-    lstm_model = LSTM()
-    lstm_model.build_default((7*96,1), 96, activation = None)
+def train(net, trainloader, optimizer, epochs):
+    """Train the network on the training set."""
+    criterion = torch.nn.CrossEntropyLoss()
+    net.train()
+    for _ in range(epochs):
+        for consumption, labels in trainloader:
+            optimizer.zero_grad()
+            loss = criterion(net(consumption), labels)
+            loss.backward()
+            optimizer.step()
+    return net
 
-    #trainer = tff.learning.algorithms.build_unweighted_fed_avg(model_fn(rnn_model), client_optimizer_fn = lambda: tf.keras.optimizers.SGD(0.1))
-    #state = trainer.initialize()
 
-    # for _ in range(300):
-    #     state, metrics = trainer.next(state,train_data)
-    #     print(metrics['train']['loss'])
+def test(net, testloader):
+    """Validate the network on the entire test set."""
+    criterion = torch.nn.CrossEntropyLoss()
+    correct, loss = 0, 0.0
+    net.eval()
+    with torch.no_grad():
+        for images, labels in testloader:
+            outputs = net(images)
+            loss += criterion(outputs, labels).item()
+            _, predicted = torch.max(outputs.data, 1)
+            correct += (predicted == labels).sum().item()
+    accuracy = correct / len(testloader.dataset)
+    return loss, accuracy
 
-# def model_fn (model, training = True):
-#     return tff.learning.from_keras_model(model, input_spec = train_data[0].element_spec, loss = tf.keras.losses.SparseCategoricalCrossentropy(), metrics =[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-# Simulate a few rounds of training with the selected client devices
+def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None):
+    """A minimal (but complete) training loop"""
+    def collate_fn(batch):
+        
+        # each item in batch will be a tuple (input, target)
+        # the input could be a multi-dimensional tensor
+        data = torch.stack([item[0] for item in batch])
+
+        # the target could be a single value, so we just construct a tensor out of them
+        target = torch.stack([item[1] for item in batch])
+
+        return data, target
+
+    # define optimiser with hyperparameters supplied
+    optim = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+    inds = random.sample(list(np.arange(int(35136/96))), k = round(35136//96 * 0.8))
+    
+
+    # get dataset and construct a dataloaders
+    trainset, testset = CustomDataset(True, inds), CustomDataset(False, inds)  # Assuming same dataset can be used for training and testing.
+    trainloader = DataLoader(trainset, batch_size=64, shuffle=True, num_workers=2, collate_fn = collate_fn)
+    testloader = DataLoader(testset, batch_size=128)
+    # train for the specified number of epochs
+    trained_model = train(model, trainloader, optim, epochs)
+
+    # training is completed, then evaluate model on the test set
+    loss, accuracy = test(trained_model, testloader)
+    print(f"{loss = }")
+    print(f"{accuracy = }")
+
 
 if __name__=="__main__":
     main()
