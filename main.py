@@ -10,7 +10,10 @@ from dataset import CustomDataset
 
 def main():
 # Let's define some hyperparameters
-    input_size = 96 # Input size should be based on your data
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
+    device = torch.device("cpu")
+    torch.set_default_device(device)
+    input_size = 96
     hidden_size = 128 # hidden size
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
@@ -53,10 +56,9 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None)
     def collate_fn(batch):
         
         # each item in batch will be a tuple (input, target)
-        # the input could be a multi-dimensional tensor
-        data = torch.stack([item[0] for item in batch])
+        # the input is a multi-dimensional tensor
+        data = torch.stack([item[0] for item in batch]).unsqueeze(0)
 
-        # the target could be a single value, so we just construct a tensor out of them
         target = torch.stack([item[1] for item in batch])
 
         return data, target
@@ -67,8 +69,8 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None)
     
 
     # get dataset and construct a dataloaders
-    trainset, testset = CustomDataset(True, inds), CustomDataset(False, inds)  # Assuming same dataset can be used for training and testing.
-    trainloader = DataLoader(trainset, batch_size=64, shuffle=True, num_workers=2, collate_fn = collate_fn)
+    trainset, testset = CustomDataset(True, inds), CustomDataset(False, inds)
+    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=5, collate_fn = collate_fn)
     testloader = DataLoader(testset, batch_size=128)
     # train for the specified number of epochs
     trained_model = train(model, trainloader, optim, epochs)
