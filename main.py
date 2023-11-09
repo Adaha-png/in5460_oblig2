@@ -1,4 +1,5 @@
-from model import RNNClassifier, LSTMClassifier
+#from sklearn.metrics import confusion_matrix
+from model import RNNClassifier, LSTMClassifier, LSTMPrediction, RNNPrediction
 import argparse
 import pandas as pd
 import numpy as np
@@ -7,6 +8,15 @@ import torch
 from torch.utils.data import DataLoader
 import random
 from dataset import CustomDataset
+
+rnnLossList = []
+lstmLossList = []
+rnnPredList = []
+lstmPredList = []
+rnnGrounTruth = []
+lstmGroundTruth = []
+rnnAccList = []
+lstmAccList = []
 
 def main():
 # Let's define some hyperparameters
@@ -18,42 +28,70 @@ def main():
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
 
-    #lstm_model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
-    #rnn_model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
-    
-    run_centralised(epochs = 10, lr = 0.01, model = rnn_model)
-    run_centralised(epochs = 10, lr = 0.01, model = lstm_model)
+    classification = True
+    if classification:
+        lstm_model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
+        rnn_model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
+    else:
+        lstm_model = LSTMPrediction(input_size*7, hidden_size, num_layers)
+        rnn_model = RNNPrediction(input_size*7, hidden_size, num_layers)
 
-def train(net, trainloader, optimizer, epochs):
+    run_centralised(epochs = 10, lr = 0.01, model = rnn_model, classification = classification)
+    run_centralised(epochs = 10, lr = 0.01, model = lstm_model, classification = classification)
+
+def train(net, trainloader, optimizer, epochs, classification):
     """Train the network on the training set."""
-    criterion = torch.nn.CrossEntropyLoss()
+    if classification:
+        criterion = torch.nn.CrossEntropyLoss()
+    else:
+        criterion = torch.nn.MSELoss()
+    #cm = np.array([[0,0],[0,0]])
     net.train()
     for _ in range(epochs):
         print(_)
         for consumption, labels in trainloader:
             optimizer.zero_grad()
-            loss = criterion(net(consumption), labels)
+            if classification:
+                loss = criterion(net(consumption), labels)
+            else:
+                loss = criterion(net(consumption), labels.float())
             loss.backward()
             optimizer.step()
-    return net
+    if classification:
+        with torch.no_grad():
+            for consumption, labels in trainloader:
+                preds = net(consumption)
+                #cm += confusion_matrix(labels, preds)
+            #cm /= len(trainloader.dataset)
+    return net#, cm
 
 
-def test(net, testloader):
+def test(net, testloader, classification):
     """Validate the network on the entire test set."""
-    criterion = torch.nn.CrossEntropyLoss()
+    if classification:
+        criterion = torch.nn.CrossEntropyLoss()
+    else:
+        criterion = torch.nn.MSELoss()
     correct, loss = 0, 0.0
     net.eval()
+    #cm = np.array([[0,0],[0,0]])
     with torch.no_grad():
-        for images, labels in testloader:
-            outputs = net(images)
+        for consumption, labels in testloader:
+            outputs = net(consumption)
+            if classification:
+                ...
+                #cm += confusion_matrix(labels, outputs)
             loss += criterion(outputs, labels).item()
             _, predicted = torch.max(outputs.data, 1)
-            correct += (predicted == labels).sum().item()
+            correct += (predicted == labels)
+    if classification:
+        ...
+        #cm /= len(testloader.dataset)
     accuracy = correct / len(testloader.dataset)
-    return loss, accuracy
+    return loss, accuracy#, cm
 
 
-def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None):
+def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None, classification = True):
     """A minimal (but complete) training loop"""
     def collate_fn(batch):
         
@@ -67,7 +105,6 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None)
 
     # define optimiser with hyperparameters supplied
     optim = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
-    classification = True
 
     if classification:
         inds = random.sample(list(np.arange(int(35136/96))), k = round(35136//96 * 0.8))
@@ -79,10 +116,10 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None)
     trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=15, collate_fn = collate_fn)
     testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
-    trained_model = train(model, trainloader, optim, epochs)
+    trained_model = train(model, trainloader, optim, epochs, classification)
 
     # training is completed, then evaluate model on the test set
-    loss, accuracy = test(trained_model, testloader)
+    loss, accuracy = test(trained_model, testloader, classification)
     print(f"{loss = }")
     print(f"{accuracy = }")
 
