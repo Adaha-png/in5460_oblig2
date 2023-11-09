@@ -18,16 +18,18 @@ def main():
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
 
-    lstm_model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
-    rnn_model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
+    #lstm_model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
+    #rnn_model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
     
-    run_centralised(epochs = 5, lr = 0.001, model = lstm_model)
+    run_centralised(epochs = 10, lr = 0.01, model = rnn_model)
+    run_centralised(epochs = 10, lr = 0.01, model = lstm_model)
 
 def train(net, trainloader, optimizer, epochs):
     """Train the network on the training set."""
     criterion = torch.nn.CrossEntropyLoss()
     net.train()
     for _ in range(epochs):
+        print(_)
         for consumption, labels in trainloader:
             optimizer.zero_grad()
             loss = criterion(net(consumption), labels)
@@ -65,13 +67,17 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None)
 
     # define optimiser with hyperparameters supplied
     optim = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
-    inds = random.sample(list(np.arange(int(35136/96))), k = round(35136//96 * 0.8))
-    
+    classification = True
+
+    if classification:
+        inds = random.sample(list(np.arange(int(35136/96))), k = round(35136//96 * 0.8))
+    else:
+        inds = random.sample(list(np.arange(int(35136/96 - 7))), k = round((35136//96 - 7)* 0.8))
 
     # get dataset and construct a dataloaders
-    trainset, testset = CustomDataset(True, inds), CustomDataset(False, inds)
-    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=5, collate_fn = collate_fn)
-    testloader = DataLoader(testset, batch_size=128)
+    trainset, testset = CustomDataset(True, inds, classification), CustomDataset(False, inds, classification)
+    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=15, collate_fn = collate_fn)
+    testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
     trained_model = train(model, trainloader, optim, epochs)
 
