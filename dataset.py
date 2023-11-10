@@ -45,11 +45,12 @@ class CustomDataset(Dataset):
         if self.classific:
             return torch.Tensor(np.array(classification_x)).to(self.device), torch.Tensor(classification_y).to(device = self.device, dtype = torch.long)
         else:
-            print(prediction_x)
-            print("------------------------------------------------------------------")
-            print(prediction_y)
-            return torch.Tensor(np.array(prediction_x)).to(self.device), torch.Tensor(np.array(prediction_y)).to(device = self.device, dtype = torch.long)
-
+            prediction_x, prediction_y = torch.Tensor(np.array(prediction_x)).to(self.device), torch.Tensor(np.array(prediction_y)).to(device = self.device, dtype = torch.long)
+            p_min, p_max = prediction_x.min(), prediction_x.max()
+            new_min, new_max = 0, 1
+            prediction_y = (prediction_y-p_min)/(p_max-p_min)*(new_max-new_min) + new_min
+            prediction_x = (prediction_x-p_min)/(p_max-p_min)*(new_max-new_min) + new_min
+            return prediction_x, prediction_y
     def __len__(self):
         return len(self.X)
 

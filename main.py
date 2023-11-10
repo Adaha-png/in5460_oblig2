@@ -1,9 +1,8 @@
-#from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix
 from model import RNNClassifier, LSTMClassifier, LSTMPrediction, RNNPrediction
 import argparse
 import pandas as pd
 import numpy as np
-# we naturally first need to import torch and torchvision
 import torch
 from torch.utils.data import DataLoader
 import random
@@ -18,6 +17,9 @@ lstmGroundTruth = []
 rnnAccList = []
 lstmAccList = []
 
+def one_hot_encode(x, num_classes):
+    return np.eye(num_classes)[x]
+
 def main():
 # Let's define some hyperparameters
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
@@ -27,43 +29,69 @@ def main():
     hidden_size = 128 # hidden size
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
-
+    lstm = True
     classification = True
     if classification:
-        lstm_model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
-        rnn_model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
+        if lstm:
+            model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
+        else:
+            model = RNNClassifier(input_size, hidden_size, num_layers, num_classes)
     else:
-        lstm_model = LSTMPrediction(input_size*7, hidden_size, num_layers)
-        rnn_model = RNNPrediction(input_size*7, hidden_size, num_layers)
+        if lstm:
+            model = LSTMPrediction(input_size*7, hidden_size, num_layers)
+        else:
+            model = RNNPrediction(input_size*7, hidden_size, num_layers)
+    run_centralised(epochs = 2, lr = 0.01, model = model, classification = classification, lstm = lstm)
 
-    run_centralised(epochs = 10, lr = 0.01, model = rnn_model, classification = classification)
-    run_centralised(epochs = 10, lr = 0.01, model = lstm_model, classification = classification)
 
-def train(net, trainloader, optimizer, epochs, classification):
+def train(net, trainloader, optimizer, epochs, classification, lstm):
     """Train the network on the training set."""
     if classification:
         criterion = torch.nn.CrossEntropyLoss()
     else:
         criterion = torch.nn.MSELoss()
-    #cm = np.array([[0,0],[0,0]])
+    cm = np.array([[0,0],[0,0]])
     net.train()
-    for _ in range(epochs):
-        print(_)
+    timestep=0
+    correct=0
+    for e in range(epochs):
+        print(f"{e+1}/{epochs}", end = "\r")
         for consumption, labels in trainloader:
+            timestep+=1
             optimizer.zero_grad()
             if classification:
-                loss = criterion(net(consumption), labels)
+                vals = net(consumption)
+                _, predicted = torch.max(vals.data, 1)
+                correct += (predicted == labels)
+                loss = criterion(vals, labels)
+                if lstm:
+                    lstmAccList.append(correct/timestep)
+                else:
+                    rnnAccList.append(correct/timestep)
             else:
-                loss = criterion(net(consumption), labels.float())
+                vals = net(consumption)
+                loss = criterion(vals, labels.float())
+                if lstm:
+                    lstmLossList.append(loss)
+                    lstmPredList.append(vals)
+                    lstmGroundTruth.append(labels)
+                else:
+                    rnnLossList.append(loss)
+                    rnnPredList.append(vals)
+                    rnnGroundTruth.append(labels)
             loss.backward()
             optimizer.step()
     if classification:
         with torch.no_grad():
             for consumption, labels in trainloader:
                 preds = net(consumption)
-                #cm += confusion_matrix(labels, preds)
-            #cm /= len(trainloader.dataset)
-    return net#, cm
+                num_classes = 10
+                one_hot_arr = one_hot_encode(labels, num_classes)
+                p_new = np.zeros(10)
+                p_new[preds.argmax()] = 1
+                cm = cm + confusion_matrix(one_hot_arr, p_new)/10
+            cm = cm/len(trainloader.dataset)
+    return net, cm
 
 
 def test(net, testloader, classification):
@@ -72,43 +100,44 @@ def test(net, testloader, classification):
         criterion = torch.nn.CrossEntropyLoss()
     else:
         criterion = torch.nn.MSELoss()
-    correct, loss = 0, 0.0
+    correct, loss = np.zeros(10), 0.0
     net.eval()
-    #cm = np.array([[0,0],[0,0]])
+    cm = np.array([[0,0],[0,0]])
     with torch.no_grad():
         for consumption, labels in testloader:
             outputs = net(consumption)
             if classification:
-                ...
-                #cm += confusion_matrix(labels, outputs)
+                num_classes = 10
+                one_hot_arr = one_hot_encode(labels, num_classes)
+                p_new = np.zeros(10)
+                p_new[outputs.argmax()] = 1
+                cm = cm + confusion_matrix(one_hot_arr, p_new)/10
+                _, predicted = torch.max(outputs.data, 1)
+                correct[labels] += (predicted == labels)
             loss += criterion(outputs, labels).item()
-            _, predicted = torch.max(outputs.data, 1)
-            correct += (predicted == labels)
     if classification:
-        ...
-        #cm /= len(testloader.dataset)
-    accuracy = correct / len(testloader.dataset)
-    return loss, accuracy#, cm
+        cm = cm/len(testloader.dataset)
+    accuracy = correct / len(testloader.dataset)*10
+    return loss, accuracy, cm
 
 
-def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None, classification = True):
+def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None, classification = True, lstm = True):
     """A minimal (but complete) training loop"""
     def collate_fn(batch):
         
         # each item in batch will be a tuple (input, target)
         # the input is a multi-dimensional tensor
         data = torch.stack([item[0] for item in batch]).unsqueeze(0)
-
         target = torch.stack([item[1] for item in batch])
-
         return data, target
 
-    # define optimiser with hyperparameters supplied
-    optim = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
-
     if classification:
+        # define optimiser with hyperparameters supplied
+        optim = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
         inds = random.sample(list(np.arange(int(35136/96))), k = round(35136//96 * 0.8))
     else:
+        # define optimiser with hyperparameters supplied
+        optim = torch.optim.Adam(model.parameters(), lr=0.001)
         inds = random.sample(list(np.arange(int(35136/96 - 7))), k = round((35136//96 - 7)* 0.8))
 
     # get dataset and construct a dataloaders
@@ -116,12 +145,42 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
     trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=15, collate_fn = collate_fn)
     testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
-    trained_model = train(model, trainloader, optim, epochs, classification)
+    trained_model, cm_train = train(model, trainloader, optim, epochs, classification, lstm)
+    loss, accuracy, cm_test = test(trained_model, testloader, classification)
+    if classification:
+        print(f"{loss = }")
+        print(f"{accuracy = }")
+        print(f"{cm_train = }")
+        print(f"{cm_test = }")
+        if lstm:
+            with open("lstmAcclist.txt", "w") as f:
+                for i in lstmAccList:
+                    f.write("%s, " % i)
+            torch.save(trained_model.state_dict(),"classification/lstm.pt")
+        else:
+            with open("rnnAcclist.txt", "w") as f:
+                f.write(rnnAccList)
+            torch.save(trained_model.state_dict(),"classification/rnn.pt")
+    else:
+        print(f"{loss = }")
+        if lstm:
+            with open("lstmLosslist.txt", "w") as f:
+                f.write(lstmLossList)
+            with open("lstmPredlist.txt", "w") as f:
+                f.write(lstmPredList)
+            with open("lstmGroundTruth.txt", "w") as f:
+                f.write(lstmGroundTruth)
+            torch.save(trained_model.state_dict(),"prediction/lstm.pt")
+        else:
+            with open("rnnLosslist.txt", "w") as f:
+                f.write(rnnLossList)
+            with open("rnnPredlist.txt", "w") as f:
+                f.write(rnnPredList)
+            with open("rnnGroundTruth.txt", "w") as f:
+                f.write(rnnGroundTruth)
+            torch.save(trained_model.state_dict(),"prediction/rnn.pt")
+            
 
-    # training is completed, then evaluate model on the test set
-    loss, accuracy = test(trained_model, testloader, classification)
-    print(f"{loss = }")
-    print(f"{accuracy = }")
 
 
 if __name__=="__main__":
