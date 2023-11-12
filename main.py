@@ -100,7 +100,7 @@ def test(net, testloader, classification):
         criterion = torch.nn.CrossEntropyLoss()
     else:
         criterion = torch.nn.MSELoss()
-    correct, loss = np.zeros(10), 0.0
+    correct_1, correct, loss = 0, np.zeros(10), 0.0
     net.eval()
     cm = np.array([[0,0],[0,0]])
     with torch.no_grad():
@@ -114,11 +114,13 @@ def test(net, testloader, classification):
                 cm = cm + confusion_matrix(one_hot_arr, p_new)/10
                 _, predicted = torch.max(outputs.data, 1)
                 correct[labels] += (predicted == labels)
+                correct_1 += (predicted==labels).sum().item()
             loss += criterion(outputs, labels).item()
     if classification:
         cm = cm/len(testloader.dataset)
     accuracy = correct / len(testloader.dataset)*10
-    return loss, accuracy, cm
+    accuracy_1 = correct_1/len(testloader.dataset)
+    return loss, accuracy, cm, accuracy_1
 
 
 def collate_fn(batch): 
@@ -148,12 +150,13 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
     testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
     trained_model, cm_train = train(model, trainloader, optim, epochs, classification, lstm)
-    loss, accuracy, cm_test = test(trained_model, testloader, classification)
+    loss, accuracy, cm_test, total_acc = test(trained_model, testloader, classification)
     if classification:
         print(f"{loss = }")
         print(f"{accuracy = }")
         print(f"{cm_train = }")
         print(f"{cm_test = }")
+        print(f"{total_acc = }")
         if lstm:
             with open("lstmAcclist.txt", "w") as f:
                 for i in lstmAccList:
