@@ -12,7 +12,7 @@ rnnLossList = []
 lstmLossList = []
 rnnPredList = []
 lstmPredList = []
-rnnGrounTruth = []
+rnnGroundTruth = []
 lstmGroundTruth = []
 rnnAccList = []
 lstmAccList = []
@@ -30,7 +30,7 @@ def main():
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
     lstm = True
-    classification = True
+    classification = False
     if classification:
         if lstm:
             model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
@@ -41,7 +41,7 @@ def main():
             model = LSTMPrediction(input_size*7, hidden_size, num_layers)
         else:
             model = RNNPrediction(input_size*7, hidden_size, num_layers)
-    run_centralised(epochs = 2, lr = 0.01, model = model, classification = classification, lstm = lstm)
+    run_centralised(epochs = 1, lr = 0.01, model = model, classification = classification, lstm = lstm)
 
 
 def train(net, trainloader, optimizer, epochs, classification, lstm):
@@ -121,15 +121,17 @@ def test(net, testloader, classification):
     return loss, accuracy, cm
 
 
+def collate_fn(batch): 
+    # each item in batch will be a tuple (input, target)
+    # the input is a multi-dimensional tensor
+    data = torch.stack([item[0] for item in batch]).unsqueeze(0)
+    target = torch.stack([item[1] for item in batch])
+    return data, target
+
+
 def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None, classification = True, lstm = True):
     """A minimal (but complete) training loop"""
-    def collate_fn(batch):
-        
-        # each item in batch will be a tuple (input, target)
-        # the input is a multi-dimensional tensor
-        data = torch.stack([item[0] for item in batch]).unsqueeze(0)
-        target = torch.stack([item[1] for item in batch])
-        return data, target
+    
 
     if classification:
         # define optimiser with hyperparameters supplied
@@ -142,7 +144,7 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
 
     # get dataset and construct a dataloaders
     trainset, testset = CustomDataset(True, inds, classification), CustomDataset(False, inds, classification)
-    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=15, collate_fn = collate_fn)
+    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=5, collate_fn = collate_fn)
     testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
     trained_model, cm_train = train(model, trainloader, optim, epochs, classification, lstm)
@@ -155,29 +157,36 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
         if lstm:
             with open("lstmAcclist.txt", "w") as f:
                 for i in lstmAccList:
-                    f.write("%s, " % i)
+                    f.write("%s; " % i.item())
             torch.save(trained_model.state_dict(),"classification/lstm.pt")
         else:
             with open("rnnAcclist.txt", "w") as f:
-                f.write(rnnAccList)
+                for i in rnnAccList:
+                    f.write("%s; " % i.item())
             torch.save(trained_model.state_dict(),"classification/rnn.pt")
     else:
         print(f"{loss = }")
         if lstm:
             with open("lstmLosslist.txt", "w") as f:
-                f.write(lstmLossList)
+                for i in lstmLossList:
+                    f.write("%s; " % i.item())
             with open("lstmPredlist.txt", "w") as f:
-                f.write(lstmPredList)
+                for i in lstmPredList:
+                    f.write("%s; " % i.item())
             with open("lstmGroundTruth.txt", "w") as f:
-                f.write(lstmGroundTruth)
+                for i in lstmGroundTruth:
+                    f.write("%s; " % i.item())
             torch.save(trained_model.state_dict(),"prediction/lstm.pt")
         else:
             with open("rnnLosslist.txt", "w") as f:
-                f.write(rnnLossList)
+                for i in rnnLossList:
+                    f.write("%s; " % i.item())
             with open("rnnPredlist.txt", "w") as f:
-                f.write(rnnPredList)
+                for i in rnnPredList:
+                    f.write("%s; " % i.item())
             with open("rnnGroundTruth.txt", "w") as f:
-                f.write(rnnGroundTruth)
+                for i in rnnGroundTruth :
+                    f.write("%s; " % i.item())
             torch.save(trained_model.state_dict(),"prediction/rnn.pt")
             
 
