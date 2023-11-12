@@ -45,21 +45,9 @@ timestep2 = np.arange(len(file2))
 #-------------------------------------------------------------------------
 #Plotting LSTM loss during prediction training
 #-------------------------------------------------------------------------
-plt.plot(timestep, file, "r", label="Mean Squared Error")
-plt.grid()
-plt.title("Prediction model using LSTM")
-plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
-plt.ylabel("Loss", fontdict={"size":12, "family":"serif"})
-plt.legend()
-plt.show()
-
-
-#-------------------------------------------------------------------------
-#Plotting RNN loss during prediction training
-#-------------------------------------------------------------------------
 # plt.plot(timestep, file, "r", label="Mean Squared Error")
 # plt.grid()
-# plt.title("Prediction model using RNN")
+# plt.title("Prediction model using LSTM")
 # plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
 # plt.ylabel("Loss", fontdict={"size":12, "family":"serif"})
 # plt.legend()
@@ -67,29 +55,41 @@ plt.show()
 
 
 #-------------------------------------------------------------------------
-#Plotting LSTM vs Ground Truth
+#Plotting RNN loss during prediction training
 #-------------------------------------------------------------------------
-plt.plot(timestep, file, 'g', label = "Ground truth")
-plt.plot(timestep2, file2, 'b', label = "Predicted output")
+plt.plot(timestep, file, "r", label="Mean Squared Error")
 plt.grid()
-plt.title("Predicted vs Ground Truth using LSTM")
+plt.title("Prediction model using RNN")
 plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
-plt.ylabel("kWh", fontdict={"size":12, "family":"serif"})
+plt.ylabel("Loss", fontdict={"size":12, "family":"serif"})
 plt.legend()
 plt.show()
 
 
 #-------------------------------------------------------------------------
-#Plotting RNN vs Ground Truth
+#Plotting LSTM vs Ground Truth
 #-------------------------------------------------------------------------
 # plt.plot(timestep, file, 'g', label = "Ground truth")
 # plt.plot(timestep2, file2, 'b', label = "Predicted output")
 # plt.grid()
-# plt.title("Predicted vs Ground Truth using RNN")
+# plt.title("Predicted vs Ground Truth using LSTM")
 # plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
 # plt.ylabel("kWh", fontdict={"size":12, "family":"serif"})
 # plt.legend()
 # plt.show()
+
+
+#-------------------------------------------------------------------------
+#Plotting RNN vs Ground Truth
+#-------------------------------------------------------------------------
+plt.plot(timestep, file, 'g', label = "Ground truth")
+plt.plot(timestep2, file2, 'b', label = "Predicted output")
+plt.grid()
+plt.title("Predicted vs Ground Truth using RNN")
+plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
+plt.ylabel("kWh", fontdict={"size":12, "family":"serif"})
+plt.legend()
+plt.show()
 
 
 

@@ -29,7 +29,7 @@ def main():
     hidden_size = 128 # hidden size
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
-    lstm = True
+    lstm = False
     classification = False
     if classification:
         if lstm:
