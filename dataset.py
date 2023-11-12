@@ -13,7 +13,7 @@ class CustomDataset(Dataset):
                      "Microwave", "Kettle", "Lighting", "Refrigerator"]
         self.inds = inds
         self.train = train
-        self.households = 1
+        self.households = 50
         self.classific = classification
         self.X, self.y = self.load_data()
 

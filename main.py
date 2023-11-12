@@ -30,7 +30,7 @@ def main():
     num_layers = 2 # number of LSTM layers
     num_classes = 10 # number of outputs
     lstm = True
-    classification = True
+    classification = False
     if classification:
         if lstm:
             model = LSTMClassifier(input_size, hidden_size, num_layers, num_classes)
@@ -144,7 +144,7 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
 
     # get dataset and construct a dataloaders
     trainset, testset = CustomDataset(True, inds, classification), CustomDataset(False, inds, classification)
-    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=10, collate_fn = collate_fn)
+    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=50, collate_fn = collate_fn)
     testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
     trained_model, cm_train = train(model, trainloader, optim, epochs, classification, lstm)
