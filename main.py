@@ -144,7 +144,7 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
 
     # get dataset and construct a dataloaders
     trainset, testset = CustomDataset(True, inds, classification), CustomDataset(False, inds, classification)
-    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=5, collate_fn = collate_fn)
+    trainloader = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=50, collate_fn = collate_fn)
     testloader = DataLoader(testset, batch_size=1, collate_fn = collate_fn)
     # train for the specified number of epochs
     trained_model, cm_train = train(model, trainloader, optim, epochs, classification, lstm)
@@ -172,10 +172,10 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
                     f.write("%s; " % i.item())
             with open("lstmPredlist.txt", "w") as f:
                 for i in lstmPredList:
-                    f.write("%s; " % i.item())
+                    f.write("%s; " % i)
             with open("lstmGroundTruth.txt", "w") as f:
                 for i in lstmGroundTruth:
-                    f.write("%s; " % i.item())
+                    f.write("%s; " % i)
             torch.save(trained_model.state_dict(),"prediction/lstm.pt")
         else:
             with open("rnnLosslist.txt", "w") as f:
@@ -183,10 +183,10 @@ def run_centralised(epochs: int, lr: float, momentum: float = 0.9, model = None,
                     f.write("%s; " % i.item())
             with open("rnnPredlist.txt", "w") as f:
                 for i in rnnPredList:
-                    f.write("%s; " % i.item())
+                    f.write("%s; " % i)
             with open("rnnGroundTruth.txt", "w") as f:
                 for i in rnnGroundTruth :
-                    f.write("%s; " % i.item())
+                    f.write("%s; " % i)
             torch.save(trained_model.state_dict(),"prediction/rnn.pt")
             
 

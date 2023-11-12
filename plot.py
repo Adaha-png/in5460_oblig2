@@ -3,7 +3,7 @@ import numpy as np
 
 #----- Reader of Acc and loss Lists
 #Changed manually after models have been created
-with open("rnnAcclist.txt") as f:
+with open("lstmLosslist.txt") as f:
     file = f.read()
 file = file.split("; ")
 file.pop()
@@ -12,13 +12,13 @@ for i in range(len(file)):
 timestep = np.arange(len(file))
 
 #---- Ground Truth reader ------
-with open("lstmGroundTruth") as g:
-    file2 = g.read()
-file2 = file2.split("; ")
-file2.pop()
-for i in range(len(file2)):
-    file2[i] = float(file2[i])
-timestep2 = np.arange(len(file2))
+# with open("lstmGroundTruth") as g:
+#     file2 = g.read()
+# file2 = file2.split("; ")
+# file2.pop()
+# for i in range(len(file2)):
+#     file2[i] = float(file2[i])
+# timestep2 = np.arange(len(file2))
 
 #-------------------------------------------------------------------------
 #Ploting LSTM accuracy during classification training
@@ -69,14 +69,14 @@ plt.show()
 #-------------------------------------------------------------------------
 #Plotting LSTM vs Ground Truth
 #-------------------------------------------------------------------------
-plt.plot(timestep, file, 'g', label = "Ground truth")
-plt.plot(timestep2, file2, 'b', label = "Predicted output")
-plt.grid()
-plt.title("Predicted vs Ground Truth using LSTM")
-plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
-plt.ylabel("kWh", fontdict={"size":12, "family":"serif"})
-plt.legend()
-plt.show()
+# plt.plot(timestep, file, 'g', label = "Ground truth")
+# plt.plot(timestep2, file2, 'b', label = "Predicted output")
+# plt.grid()
+# plt.title("Predicted vs Ground Truth using LSTM")
+# plt.xlabel("Timestep", fontdict={"size":12, "family":"serif"})
+# plt.ylabel("kWh", fontdict={"size":12, "family":"serif"})
+# plt.legend()
+# plt.show()
 
 
 #-------------------------------------------------------------------------
