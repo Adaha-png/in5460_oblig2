@@ -3,7 +3,7 @@ import numpy as np
 
 #----- Reader of Acc and loss Lists
 #Changed manually after models have been created
-with open("lstmLosslist.txt") as f:
+with open("lstmPredlist.txt") as f:
     file = f.read()
 file = file.split("; ")
 file.pop()
